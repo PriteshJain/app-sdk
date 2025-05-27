@@ -139,7 +139,7 @@ class AssetSidebarWidget {
                 }
             );
             this._emitter.emitEvent("_eventRegistration", [
-                { name: "entryChange" },
+                { name: "assetChange" },
             ]);
         } else {
             throw Error("Callback must be a function");

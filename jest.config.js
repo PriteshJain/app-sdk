@@ -9,7 +9,7 @@ module.exports = {
         "^.+\\.(js|jsx)$": "babel-jest",
     },
     moduleNameMapper: {
-      "^axios$": "axios/dist/node/axios.cjs"
+      "^axios$": "axios"
     },
     collectCoverageFrom: ["./src/**"],
     coveragePathIgnorePatterns: ["<rootDir>.*types.ts"],

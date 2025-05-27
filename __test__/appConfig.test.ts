@@ -4,7 +4,7 @@ import { ERROR_MESSAGES } from "../src/utils/errorMessages";
 
 describe("app config", () => {
     const mockConnection = {
-        sendToParent: jest.fn().mockReturnValue(Promise.resolve({})),
+        sendToParent: jest.fn(), // Removed global mockReturnValue
     };
     const mockEmitter: EventEmitter = new EventEmitter();
     const mockData = {
@@ -25,24 +25,73 @@ describe("app config", () => {
         expect(appConfig.stack()).toBeDefined();
     });
 
-    it("setInstallationData method should send data to parent", () => {
-        const data = {
-            configuration: {},
-            serverConfiguration: {},
-        };
-        appConfig.setInstallationData(data);
+    describe("setInstallationData", () => {
+        it("should send data to parent and resolve with processed data on success", async () => {
+            const data = {
+                configuration: {},
+                serverConfiguration: {},
+            };
+            const mockResponseData = { status: "installed" };
+            // Configure sendToParent to resolve with a structure that onData expects
+            mockConnection.sendToParent.mockResolvedValueOnce({
+                data: mockResponseData,
+            });
 
-        expect(mockConnection.sendToParent).toHaveBeenLastCalledWith(
-            "setInstallationData",
-            data
-        );
+            await expect(
+                appConfig.setInstallationData(data)
+            ).resolves.toEqual(mockResponseData);
+            expect(mockConnection.sendToParent).toHaveBeenLastCalledWith(
+                "setInstallationData",
+                data
+            );
+        });
+
+        it("should reject with error from onError on failure", async () => {
+            const mockError = new Error("Failed to set data");
+            mockConnection.sendToParent.mockRejectedValueOnce(mockError);
+
+            const data = {
+                configuration: {},
+                serverConfiguration: {},
+            };
+            await expect(
+                appConfig.setInstallationData(data)
+            ).rejects.toThrow("Failed to set data");
+            expect(mockConnection.sendToParent).toHaveBeenLastCalledWith(
+                "setInstallationData",
+                data
+            );
+        });
     });
-    it("getInstallationData method should send request to parent for data", () => {
-        appConfig.getInstallationData();
 
-        expect(mockConnection.sendToParent).toHaveBeenLastCalledWith(
-            "getInstallationData"
-        );
+    describe("getInstallationData", () => {
+        it("should send request to parent for data and resolve with processed data on success", async () => {
+            const mockResponseData = {
+                configuration: { key: "value" },
+                serverConfiguration: { serverKey: "serverValue" },
+            };
+            mockConnection.sendToParent.mockResolvedValueOnce({
+                data: mockResponseData,
+            });
+            await expect(
+                appConfig.getInstallationData()
+            ).resolves.toEqual(mockResponseData);
+            expect(mockConnection.sendToParent).toHaveBeenLastCalledWith(
+                "getInstallationData"
+            );
+        });
+
+        it("should reject with error from onError on failure", async () => {
+            const mockError = new Error("Failed to get data");
+            mockConnection.sendToParent.mockRejectedValueOnce(mockError);
+
+            await expect(
+                appConfig.getInstallationData()
+            ).rejects.toThrow("Failed to get data");
+            expect(mockConnection.sendToParent).toHaveBeenLastCalledWith(
+                "getInstallationData"
+            );
+        });
     });
 
     describe("setValidity", () => {
@@ -61,6 +110,7 @@ describe("app config", () => {
         });
 
         it("should work when options parameter is not provided", async () => {
+            mockConnection.sendToParent.mockResolvedValueOnce({ data: {} });
             await appConfig.setValidity(true);
 
             expect(mockConnection.sendToParent).toHaveBeenLastCalledWith(
@@ -69,7 +119,8 @@ describe("app config", () => {
             );
         });
 
-        it("should send data to parent", async () => {
+        it("should send data to parent and resolve on success", async () => {
+            mockConnection.sendToParent.mockResolvedValueOnce({ data: {} });
             await appConfig.setValidity(true);
 
             expect(mockConnection.sendToParent).toHaveBeenLastCalledWith(
@@ -77,11 +128,25 @@ describe("app config", () => {
                 { isValid: true }
             );
 
+            mockConnection.sendToParent.mockResolvedValueOnce({ data: {} });
             await appConfig.setValidity(false, { message: "message" });
 
             expect(mockConnection.sendToParent).toHaveBeenLastCalledWith(
                 "setValidity",
                 { isValid: false, options: { message: "message" } }
+            );
+        });
+
+        it("should reject with error from onError on failure", async () => {
+            const mockError = new Error("Failed to set validity");
+            mockConnection.sendToParent.mockRejectedValueOnce(mockError);
+
+            await expect(appConfig.setValidity(true)).rejects.toThrow(
+                "Failed to set validity"
+            );
+            expect(mockConnection.sendToParent).toHaveBeenLastCalledWith(
+                "setValidity",
+                { isValid: true }
             );
         });
     });
